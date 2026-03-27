@@ -1,0 +1,44 @@
+# === 模型权重 (体积过大，不上传) ===
+models/
+outputs/
+
+# === 数据集原始文件 (体积大，README 中说明下载方式) ===
+data/ChatHaruhi-54K/
+data/sft_train.json
+data/sft_val.json
+
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+*.so
+
+# === Jupyter Notebook ===
+.ipynb_checkpoints/
+
+# === 虚拟环境 ===
+.env
+.venv
+env/
+venv/
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === OS ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === HuggingFace 缓存 ===
+.cache/
+*.lock

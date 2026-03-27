@@ -1,0 +1,57 @@
+# LoRA SFT (指令微调) 配置文件
+# 注意: LoRA 不量化，显存占用较大，8GB 显存建议优先使用 qlora_sft.yaml
+# 如需使用此配置，推荐 1.5B 模型 + 短序列
+
+# === 模型配置 ===
+model_name_or_path: "./models/Qwen2.5-3B-Instruct"
+trust_remote_code: true
+
+# === LoRA 配置 ===
+lora:
+  r: 32
+  lora_alpha: 64
+  lora_dropout: 0.05
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+  task_type: "CAUSAL_LM"
+  bias: "none"
+
+# === 量化配置 (LoRA 模式下不启用量化) ===
+quantization:
+  enabled: false
+
+# === 数据配置 ===
+data:
+  train_file: "data/sft_train.json"
+  val_file: "data/sft_val.json"
+  max_seq_length: 1024
+  prompt_template: "qwen"  # 支持 qwen / chatml / alpaca
+
+# === 训练配置 ===
+training:
+  output_dir: "outputs/lora_sft"
+  num_train_epochs: 3
+  per_device_train_batch_size: 1
+  per_device_eval_batch_size: 1
+  gradient_accumulation_steps: 16
+  learning_rate: 2.0e-4
+  weight_decay: 0.01
+  warmup_ratio: 0.03
+  lr_scheduler_type: "cosine"
+  logging_steps: 10
+  save_steps: 100
+  eval_steps: 100
+  eval_strategy: "steps"
+  save_total_limit: 3
+  fp16: false
+  bf16: true
+  gradient_checkpointing: true
+  dataloader_num_workers: 4
+  report_to: "none"
+  seed: 42
