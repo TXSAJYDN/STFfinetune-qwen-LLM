@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}模型管理{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>⚙️ 模型加载与管理</h1>
+  <p>加载 Base 模型或 LoRA 微调适配器，准备角色扮演对话</p>
+  <div class="section-divider"></div>
+</div>
+
+<div class="card" style="max-width: 720px; margin: 0 auto;">
+  <div class="form-group">
+    <label class="form-label">Base 模型路径</label>
+    <input type="text" id="baseModelPath" class="form-input" value="./models/Qwen2.5-3B-Instruct">
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">LoRA 适配器路径（留空则只加载 Base 模型）</label>
+    <input type="text" id="loraModelPath" class="form-input" value="./outputs/qlora_sft/final">
+  </div>
+
+  <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+    <input type="checkbox" id="load4bit" checked style="width: 18px; height: 18px; accent-color: var(--accent-red);">
+    <label for="load4bit" class="form-label" style="margin: 0; cursor: pointer;">启用 4-bit 量化（推荐，节省显存）</label>
+  </div>
+
+  <div style="margin-top: 32px; display: flex; gap: 16px;">
+    <button class="btn btn-secondary" onclick="loadModel(false)" id="btnBase">加载纯 Base 模型</button>
+    <button class="btn btn-primary" onclick="loadModel(true)" id="btnLora">加载 Base + LoRA 模型</button>
+  </div>
+
+  <div id="loadStatus" class="status-box"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  async function loadModel(withLora) {
+    const base_model = document.getElementById('baseModelPath').value;
+    const lora_path = withLora ? document.getElementById('loraModelPath').value : null;
+    const load_in_4bit = document.getElementById('load4bit').checked;
+
+    const statusDiv = document.getElementById('loadStatus');
+    const btnBase = document.getElementById('btnBase');
+    const btnLora = document.getElementById('btnLora');
+
+    statusDiv.className = 'status-box visible';
+    statusDiv.innerHTML = '⏳ 正在加载模型，这可能需要 1-2 分钟，请稍候...';
+
+    btnBase.disabled = true;
+    btnLora.disabled = true;
+    showLoading('加载模型中');
+
+    try {
+      const res = await API.loadModel({ base_model, lora_path, load_in_4bit });
+      if (res.status === 'ok' || res.status === 'already_loaded') {
+        statusDiv.className = 'status-box visible success';
+        const prefix = res.status === 'already_loaded' ? '⚠️ 模型已加载过' : '✅ 加载成功';
+        statusDiv.innerHTML = `${prefix} — 当前模型类型: <strong>${res.model_type}</strong>`;
+      } else {
+        statusDiv.className = 'status-box visible error';
+        statusDiv.innerHTML = `❌ 加载失败: ${res.detail || JSON.stringify(res)}`;
+      }
+    } catch (err) {
+      statusDiv.className = 'status-box visible error';
+      statusDiv.innerHTML = `❌ 请求错误: ${err.message}`;
+    } finally {
+      btnBase.disabled = false;
+      btnLora.disabled = false;
+      hideLoading();
+    }
+  }
+</script>
+{% endblock %}

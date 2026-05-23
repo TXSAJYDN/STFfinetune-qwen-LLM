@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}推理基准{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>⚡ 推理性能基准</h1>
+  <p>模型推理延迟、吞吐量与显存占用测试</p>
+  <div class="section-divider"></div>
+</div>
+
+<!-- 概览 -->
+<div class="grid grid-2" style="margin-bottom: 32px;">
+  <div class="card" style="text-align: center;">
+    <div style="font-size: 2rem; font-weight: 700; color: var(--accent-red);" id="avgLatency">-</div>
+    <div class="form-label" style="margin-top: 4px;">平均延迟 (s)</div>
+  </div>
+  <div class="card" style="text-align: center;">
+    <div style="font-size: 2rem; font-weight: 700; color: var(--accent-red);" id="avgThroughput">-</div>
+    <div class="form-label" style="margin-top: 4px;">吞吐量 (tokens/s)</div>
+  </div>
+</div>
+
+<!-- 配置信息 -->
+<div class="card" style="margin-bottom: 24px;">
+  <h3 style="margin-bottom: 16px;">测试配置</h3>
+  <div id="configInfo" style="display: flex; gap: 16px; flex-wrap: wrap;"></div>
+</div>
+
+<!-- 逐样本结果 -->
+<div class="card" style="margin-bottom: 24px;">
+  <h3 style="margin-bottom: 16px;">逐样本延迟分布</h3>
+  <canvas id="latencyChart" height="100"></canvas>
+</div>
+
+<div class="card" style="margin-bottom: 24px;">
+  <h3 style="margin-bottom: 16px;">详细结果</h3>
+  <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--border-gold);">
+        <th style="text-align: left; padding: 8px;">Prompt</th>
+        <th style="text-align: right; padding: 8px;">输入 tokens</th>
+        <th style="text-align: right; padding: 8px;">生成 tokens</th>
+        <th style="text-align: right; padding: 8px;">延迟 (s)</th>
+        <th style="text-align: right; padding: 8px;">tokens/s</th>
+      </tr>
+    </thead>
+    <tbody id="benchBody"></tbody>
+  </table>
+</div>
+
+<div id="benchError" class="status-box" style="margin-top: 16px;"></div>
+
+<div class="card" style="margin-top: 24px; background: var(--bg-surface);">
+  <p style="font-size: 0.88rem; color: var(--text-secondary); margin: 0;">
+    <strong>如何运行基准测试？</strong>
+    <code style="background: var(--bg-primary); padding: 2px 8px; border-radius: 4px;">python -m benchmark.bench_inference --load_in_4bit</code>
+  </p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  fetch('/api/benchmark/results')
+    .then(r => { if (!r.ok) throw new Error('基准结果未找到'); return r.json(); })
+    .then(data => {
+      const s = data.summary;
+      document.getElementById('avgLatency').innerText = s.avg_latency_s;
+      document.getElementById('avgThroughput').innerText = s.avg_tokens_per_s;
+
+      // Config
+      const cfg = data.config || {};
+      const cfgEl = document.getElementById('configInfo');
+      const tags = [
+        `模型: ${cfg.base_model || '-'}`,
+        `量化: ${cfg.quantization || '-'}`,
+        `设备: ${cfg.device || '-'}`,
+        `max_new_tokens: ${s.max_new_tokens || '-'}`,
+        `峰值显存: ${s.peak_gpu_memory_mb || 0} MB`,
+      ];
+      cfgEl.innerHTML = tags.map(t => `<span class="tech-tag">${t}</span>`).join('');
+
+      // Latency chart
+      const samples = data.samples || [];
+      new Chart(document.getElementById('latencyChart'), {
+        type: 'bar',
+        data: {
+          labels: samples.map((_, i) => `#${i+1}`),
+          datasets: [{
+            label: '延迟 (s)',
+            data: samples.map(s => s.latency_s),
+            backgroundColor: 'rgba(16, 163, 127, 0.5)',
+            borderRadius: 4,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { title: { display: true, text: 'Latency (s)' }, beginAtZero: true }
+          }
+        }
+      });
+
+      // Table
+      const tbody = document.getElementById('benchBody');
+      samples.forEach(s => {
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid var(--border-subtle)';
+        tr.innerHTML = `
+          <td style="padding:8px;">${s.prompt}</td>
+          <td style="text-align:right;padding:8px;">${s.input_tokens}</td>
+          <td style="text-align:right;padding:8px;">${s.gen_tokens}</td>
+          <td style="text-align:right;padding:8px;">${s.latency_s}</td>
+          <td style="text-align:right;padding:8px;">${s.tokens_per_s}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    })
+    .catch(err => {
+      const el = document.getElementById('benchError');
+      el.className = 'status-box visible error';
+      el.innerHTML = '⚠️ ' + err.message + '。请先运行基准测试脚本。';
+    });
+</script>
+{% endblock %}

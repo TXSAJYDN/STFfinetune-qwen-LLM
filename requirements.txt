@@ -9,3 +9,10 @@ scipy
 sentencepiece
 protobuf
 pyyaml
+
+# 推理服务
+fastapi>=0.104.0
+uvicorn>=0.24.0
+
+# 评测指标
+nltk>=3.8.0

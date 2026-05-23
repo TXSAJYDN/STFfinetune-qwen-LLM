@@ -173,11 +173,19 @@ def build_lora_config(config: dict):
 
 # ======================== 训练 ========================
 
-def train(config: dict):
+def train(config: dict, resume_lora_path: str = None):
     """主训练流程"""
     # 加载模型
     model, tokenizer = load_model_and_tokenizer(config)
-    peft_config = build_lora_config(config)
+
+    # 判断是否在已有 LoRA 上继续训练
+    if resume_lora_path and os.path.exists(resume_lora_path):
+        from peft import PeftModel
+        model = PeftModel.from_pretrained(model, resume_lora_path, is_trainable=True)
+        peft_config = None  # 已有 LoRA，不需要再创建
+        print(f"✓ 加载已有 LoRA 继续训练: {resume_lora_path}")
+    else:
+        peft_config = build_lora_config(config)
 
     # 加载数据
     data_cfg = config["data"]
@@ -235,7 +243,10 @@ def train(config: dict):
     print(f"  有效批大小: {train_cfg['per_device_train_batch_size'] * train_cfg['gradient_accumulation_steps']}")
     print("=" * 60 + "\n")
 
-    trainer.train()
+    # resume_lora 是加载已有权重开始新训练，不需要 resume_from_checkpoint
+    # resume_from_checkpoint 仅用于同一次训练被中断后恢复
+    resume_ckpt = True if not resume_lora_path else False
+    trainer.train(resume_from_checkpoint=resume_ckpt)
 
     # 保存最终模型
     final_dir = os.path.join(train_cfg["output_dir"], "final")
@@ -249,6 +260,7 @@ def train(config: dict):
 def main():
     parser = argparse.ArgumentParser(description="SFT 指令微调训练")
     parser.add_argument("--config", type=str, required=True, help="配置文件路径")
+    parser.add_argument("--resume_lora", type=str, default=None, help="已有 LoRA 路径，在其基础上继续训练")
     args = parser.parse_args()
 
     with open(args.config, "r", encoding="utf-8") as f:
@@ -262,7 +274,7 @@ def main():
     print(f"训练模式: {mode}")
     print("=" * 60)
 
-    train(config)
+    train(config, resume_lora_path=args.resume_lora)
 
 
 if __name__ == "__main__":

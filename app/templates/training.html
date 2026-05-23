@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}训练可视化{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>📈 训练过程可视化</h1>
+  <p>QLoRA SFT 训练 Loss、Learning Rate 曲线</p>
+  <div class="section-divider"></div>
+</div>
+
+<!-- 训练概览 -->
+<div class="grid grid-2" style="margin-bottom: 32px;">
+  <div class="card" style="text-align: center;">
+    <div style="font-size: 2rem; font-weight: 700; color: var(--accent-red);" id="globalStep">-</div>
+    <div class="form-label" style="margin-top: 4px;">总训练步数</div>
+  </div>
+  <div class="card" style="text-align: center;">
+    <div style="font-size: 2rem; font-weight: 700; color: var(--accent-red);" id="totalEpoch">-</div>
+    <div class="form-label" style="margin-top: 4px;">训练轮数</div>
+  </div>
+</div>
+
+<!-- 图表 -->
+<div class="card" style="margin-bottom: 24px;">
+  <h3 style="margin-bottom: 16px;">Training Loss</h3>
+  <canvas id="lossChart" height="100"></canvas>
+</div>
+
+<div class="card" style="margin-bottom: 24px;">
+  <h3 style="margin-bottom: 16px;">Learning Rate Schedule</h3>
+  <canvas id="lrChart" height="100"></canvas>
+</div>
+
+<div class="card" id="evalCard" style="margin-bottom: 24px; display: none;">
+  <h3 style="margin-bottom: 16px;">Eval Loss</h3>
+  <canvas id="evalChart" height="100"></canvas>
+</div>
+
+<div id="trainError" class="status-box" style="margin-top: 16px;"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const chartOpts = {
+    responsive: true,
+    interaction: { intersect: false, mode: 'index' },
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { title: { display: true, text: 'Step' }, grid: { display: false } },
+      y: { beginAtZero: false }
+    },
+    elements: { point: { radius: 0 }, line: { borderWidth: 2 } }
+  };
+
+  fetch('/api/training/logs')
+    .then(r => { if (!r.ok) throw new Error('训练日志未找到'); return r.json(); })
+    .then(data => {
+      document.getElementById('globalStep').innerText = data.global_step.toLocaleString();
+      document.getElementById('totalEpoch').innerText = data.epoch.toFixed(1);
+
+      const steps = data.train_log.map(d => d.step);
+      const losses = data.train_log.map(d => d.loss);
+      const lrs = data.train_log.map(d => d.lr);
+
+      new Chart(document.getElementById('lossChart'), {
+        type: 'line',
+        data: {
+          labels: steps,
+          datasets: [{
+            label: 'Train Loss',
+            data: losses,
+            borderColor: 'rgba(16, 163, 127, 1)',
+            backgroundColor: 'rgba(16, 163, 127, 0.1)',
+            fill: true,
+            tension: 0.3,
+          }]
+        },
+        options: { ...chartOpts, scales: { ...chartOpts.scales, y: { title: { display: true, text: 'Loss' } } } }
+      });
+
+      new Chart(document.getElementById('lrChart'), {
+        type: 'line',
+        data: {
+          labels: steps,
+          datasets: [{
+            label: 'Learning Rate',
+            data: lrs,
+            borderColor: 'rgba(230, 168, 23, 1)',
+            backgroundColor: 'rgba(230, 168, 23, 0.1)',
+            fill: true,
+            tension: 0.3,
+          }]
+        },
+        options: { ...chartOpts, scales: { ...chartOpts.scales, y: { title: { display: true, text: 'LR' } } } }
+      });
+
+      if (data.eval_log && data.eval_log.length > 0) {
+        document.getElementById('evalCard').style.display = 'block';
+        new Chart(document.getElementById('evalChart'), {
+          type: 'line',
+          data: {
+            labels: data.eval_log.map(d => d.step),
+            datasets: [{
+              label: 'Eval Loss',
+              data: data.eval_log.map(d => d.eval_loss),
+              borderColor: 'rgba(229, 62, 62, 1)',
+              backgroundColor: 'rgba(229, 62, 62, 0.1)',
+              fill: true,
+              tension: 0.3,
+            }]
+          },
+          options: { ...chartOpts, scales: { ...chartOpts.scales, y: { title: { display: true, text: 'Eval Loss' } } } }
+        });
+      }
+    })
+    .catch(err => {
+      const el = document.getElementById('trainError');
+      el.className = 'status-box visible error';
+      el.innerHTML = '⚠️ ' + err.message + '，请确认已完成训练并存在 checkpoint';
+    });
+</script>
+{% endblock %}

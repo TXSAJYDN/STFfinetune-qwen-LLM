@@ -31,19 +31,19 @@ quantization:
 
 # === 数据配置 ===
 data:
-  train_file: "data/sft_train.json"
-  val_file: "data/sft_val.json"
-  max_seq_length: 1024
+  train_file: "data/sft_train_slim.json"
+  val_file: "data/sft_val_slim.json"
+  max_seq_length: 512
   prompt_template: "qwen"
 
 # === 训练配置 ===
 training:
   output_dir: "outputs/qlora_sft"
-  num_train_epochs: 1  # 数据量大(49K)，先跑 1 轮试效果
+  num_train_epochs: 2  # 在已有 1 epoch 基础上再训 2 轮，总共 3 轮
   per_device_train_batch_size: 1
   per_device_eval_batch_size: 1
   gradient_accumulation_steps: 16
-  learning_rate: 2.0e-4
+  learning_rate: 1.0e-4  # 继续训练用更小的学习率
   weight_decay: 0.01
   warmup_ratio: 0.03
   lr_scheduler_type: "cosine"

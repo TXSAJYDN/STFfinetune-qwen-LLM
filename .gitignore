@@ -6,6 +6,8 @@ outputs/
 data/ChatHaruhi-54K/
 data/sft_train.json
 data/sft_val.json
+data/sft_train_slim.json
+data/sft_val_slim.json
 
 
 # === Python ===

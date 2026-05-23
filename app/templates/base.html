@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}角色扮演 LLM{% endblock %} - 微调与评测平台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/main.css">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <!-- 导航栏 -->
+  <nav class="nav" id="mainNav">
+    <div class="nav-inner container">
+      <a href="/" class="nav-brand">
+        <span class="nav-logo">演</span>
+        <span class="nav-title">角色扮演评测平台</span>
+      </a>
+      <div class="nav-links">
+        <a href="/" class="nav-link {{ 'active' if nav_active == 'home' else '' }}">模型加载</a>
+        <a href="/chat" class="nav-link {{ 'active' if nav_active == 'chat' else '' }}">角色交互</a>
+        <a href="/compare" class="nav-link {{ 'active' if nav_active == 'compare' else '' }}">效果对比</a>
+        <a href="/data" class="nav-link {{ 'active' if nav_active == 'data' else '' }}">数据分析</a>
+        <a href="/training" class="nav-link {{ 'active' if nav_active == 'training' else '' }}">训练可视化</a>
+        <a href="/eval" class="nav-link {{ 'active' if nav_active == 'eval' else '' }}">评测报告</a>
+        <a href="/benchmark" class="nav-link {{ 'active' if nav_active == 'benchmark' else '' }}">推理基准</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 主内容 -->
+  <main class="main">
+    <div class="container">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <span class="footer-logo">演</span>
+          <span>角色扮演 LLM 微调与评测平台</span>
+        </div>
+        <div class="footer-tech">
+          <span class="tech-tag">Qwen2.5-3B</span>
+          <span class="tech-tag">QLoRA</span>
+          <span class="tech-tag">ChatHaruhi-54K</span>
+          <span class="tech-tag">FastAPI</span>
+          <span class="tech-tag">PEFT</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Loading 遮罩 -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div>
+      <div class="spinner-ring"></div>
+      <div class="spinner-text">处理中</div>
+    </div>
+  </div>
+
+  <script src="/static/js/main.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

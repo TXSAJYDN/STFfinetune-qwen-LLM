@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}数据分析{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>📊 数据集分析</h1>
+  <p>ChatHaruhi-54K 数据处理统计与分布可视化</p>
+  <div class="section-divider"></div>
+</div>
+
+<!-- 概览卡片 -->
+<div class="grid grid-2" id="overviewCards" style="margin-bottom: 32px;">
+  <div class="card" style="text-align: center;">
+    <div style="font-size: 2rem; font-weight: 700; color: var(--accent-red);" id="totalCount">-</div>
+    <div class="form-label" style="margin-top: 4px;">最终样本数</div>
+  </div>
+  <div class="card" style="text-align: center;">
+    <div style="font-size: 2rem; font-weight: 700; color: var(--accent-red);" id="roleCount">-</div>
+    <div class="form-label" style="margin-top: 4px;">角色数量</div>
+  </div>
+</div>
+
+<!-- 处理流水线 -->
+<div class="card" style="margin-bottom: 24px;">
+  <h3 style="margin-bottom: 16px;">数据处理流水线</h3>
+  <div id="pipelineInfo" style="display: flex; gap: 24px; flex-wrap: wrap;">
+    <div><span class="form-label">原始样本</span><div id="rawCount" style="font-size: 1.2rem; font-weight: 600;">-</div></div>
+    <div style="display: flex; align-items: center; font-size: 1.5rem; color: var(--text-muted);">→</div>
+    <div><span class="form-label">过滤</span><div id="filteredCount" style="font-size: 1.2rem; font-weight: 600; color: var(--warning);">-</div></div>
+    <div style="display: flex; align-items: center; font-size: 1.5rem; color: var(--text-muted);">→</div>
+    <div><span class="form-label">去重</span><div id="dedupCount" style="font-size: 1.2rem; font-weight: 600; color: var(--warning);">-</div></div>
+    <div style="display: flex; align-items: center; font-size: 1.5rem; color: var(--text-muted);">→</div>
+    <div><span class="form-label">最终</span><div id="finalCount" style="font-size: 1.2rem; font-weight: 600; color: var(--success);">-</div></div>
+  </div>
+</div>
+
+<!-- 图表 -->
+<div class="grid grid-2">
+  <div class="card">
+    <h3 style="margin-bottom: 16px;">Top-20 角色分布</h3>
+    <canvas id="roleChart" height="300"></canvas>
+  </div>
+  <div class="card">
+    <h3 style="margin-bottom: 16px;">输入/输出长度统计</h3>
+    <canvas id="lenChart" height="300"></canvas>
+  </div>
+</div>
+
+<div id="dataError" class="status-box" style="margin-top: 16px;"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  fetch('/api/data/stats')
+    .then(r => { if (!r.ok) throw new Error('数据未就绪'); return r.json(); })
+    .then(data => {
+      document.getElementById('totalCount').innerText = data.final_count.toLocaleString();
+      document.getElementById('roleCount').innerText = data.role_count;
+      document.getElementById('rawCount').innerText = data.raw_count.toLocaleString();
+      document.getElementById('filteredCount').innerText = '-' + data.filtered_out.toLocaleString();
+      document.getElementById('dedupCount').innerText = '-' + data.dedup_removed.toLocaleString();
+      document.getElementById('finalCount').innerText = data.final_count.toLocaleString();
+
+      // Role bar chart
+      const roles = Object.keys(data.top_roles);
+      const counts = Object.values(data.top_roles);
+      new Chart(document.getElementById('roleChart'), {
+        type: 'bar',
+        data: {
+          labels: roles,
+          datasets: [{
+            label: '样本数',
+            data: counts,
+            backgroundColor: 'rgba(16, 163, 127, 0.6)',
+            borderColor: 'rgba(16, 163, 127, 1)',
+            borderWidth: 1,
+            borderRadius: 4,
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { x: { grid: { display: false } } }
+        }
+      });
+
+      // Length stats
+      new Chart(document.getElementById('lenChart'), {
+        type: 'bar',
+        data: {
+          labels: ['最小值', '平均值', '最大值'],
+          datasets: [
+            {
+              label: '输入长度 (字符)',
+              data: [data.input_len.min, data.input_len.avg, data.input_len.max],
+              backgroundColor: 'rgba(16, 163, 127, 0.5)',
+              borderRadius: 4,
+            },
+            {
+              label: '输出长度 (字符)',
+              data: [data.output_len.min, data.output_len.avg, data.output_len.max],
+              backgroundColor: 'rgba(230, 168, 23, 0.5)',
+              borderRadius: 4,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'top' } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+    })
+    .catch(err => {
+      const el = document.getElementById('dataError');
+      el.className = 'status-box visible error';
+      el.innerHTML = '⚠️ ' + err.message + '，请先运行 <code>python data_process.py</code>';
+    });
+</script>
+{% endblock %}

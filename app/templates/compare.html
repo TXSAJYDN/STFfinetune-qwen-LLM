@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}效果对比{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>📊 Base vs LoRA 效果对比</h1>
+  <p>同一输入，对比纯 Base 模型与 LoRA 微调模型的回复差异</p>
+  <div class="section-divider"></div>
+</div>
+
+<div class="card" style="margin-bottom: 24px;">
+  <div style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
+    <div class="form-group" style="flex: 1; min-width: 140px; margin: 0;">
+      <label class="form-label">选择角色</label>
+      <select id="compRole" class="form-select"></select>
+    </div>
+    <div class="form-group" style="flex: 3; min-width: 240px; margin: 0;">
+      <label class="form-label">输入问题</label>
+      <input type="text" id="compInput" class="form-input" placeholder="输入你想问角色的内容..." onkeypress="if(event.key === 'Enter') doCompare()">
+    </div>
+    <button class="btn btn-primary" onclick="doCompare()" id="compBtn">🔍 生成</button>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h3 style="margin-bottom: 12px; color: var(--text-secondary); border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px;">🔹 Base 模型回复</h3>
+    <div id="baseOut" style="min-height: 180px; white-space: pre-wrap; line-height: 1.7; color: var(--text-primary); font-size: 0.93rem;">等待生成...</div>
+  </div>
+  <div class="card">
+    <h3 style="margin-bottom: 12px; color: var(--accent-red); border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px;">🔸 LoRA 微调回复</h3>
+    <div id="loraOut" style="min-height: 180px; white-space: pre-wrap; line-height: 1.7; color: var(--text-primary); font-size: 0.93rem;">等待生成...</div>
+  </div>
+</div>
+
+<div id="compStatus" class="status-box" style="margin-top: 16px;"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  API.getRoles().then(roles => {
+    const sel = document.getElementById('compRole');
+    sel.innerHTML = '';
+    roles.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r;
+      opt.innerText = r;
+      sel.appendChild(opt);
+    });
+  }).catch(() => {});
+
+  async function doCompare() {
+    const msg = document.getElementById('compInput').value.trim();
+    if (!msg) return;
+
+    const role = document.getElementById('compRole').value;
+    const btn = document.getElementById('compBtn');
+    const statusDiv = document.getElementById('compStatus');
+
+    btn.disabled = true;
+    btn.innerText = '...';
+    document.getElementById('baseOut').innerText = '生成中...';
+    document.getElementById('loraOut').innerText = '生成中...';
+
+    try {
+      const res = await API.chat({ message: msg, role, max_new_tokens: 256, temperature: 0.7 });
+      if (res.model_type === 'base') {
+        document.getElementById('baseOut').innerText = res.response;
+        document.getElementById('loraOut').innerText = '（当前加载的是 Base 模型，请在首页加载 LoRA 模型后再试）';
+      } else if (res.model_type === 'lora') {
+        document.getElementById('loraOut').innerText = res.response;
+        document.getElementById('baseOut').innerText = '（当前加载的是 LoRA 模型，请在首页加载 Base 模型后再试）';
+      }
+      statusDiv.className = 'status-box visible success';
+      statusDiv.innerHTML = `✅ 生成完成 · 耗时 ${res.latency_s.toFixed(2)}s · 模型: ${res.model_type}`;
+    } catch(e) {
+      statusDiv.className = 'status-box visible error';
+      statusDiv.innerHTML = `❌ 错误: ${e.message}`;
+    } finally {
+      btn.disabled = false;
+      btn.innerText = '🔍 生成';
+    }
+  }
+</script>
+{% endblock %}
